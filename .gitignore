@@ -1,0 +1,5 @@
+backup/
+.git/
+gh/
+procps/
+.config/tmux/plugins/
