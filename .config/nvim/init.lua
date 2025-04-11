@@ -49,6 +49,8 @@ vim.keymap.set('n', 'gb', '<c-o>', { desc = '[G]o [B]ack' })
 vim.keymap.set('n', '<C-d>', 'yyp', { desc = 'Duplicate current line [D]own' })
 vim.keymap.set('n', '<C-a>', 'ggVG', { desc = 'Select all [A]' })
 
+vim.keymap.set({ 'i', 'n', 'v' }, '<F1>', function() end, { desc = 'Disable documentation' })
+
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set(
   'n',
@@ -74,6 +76,47 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
   callback = function()
     vim.highlight.on_yank()
+  end,
+})
+
+local function add_include_guard()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+  if #lines == 1 and lines[1] == '' then
+    local file_path = vim.fn.expand '%:p'
+    local file_name = vim.fn.expand('%:t:r'):upper()
+    local dir_name = vim.fn.fnamemodify(file_path, ':h:t'):upper()
+
+    local guard_format = string.format('%s_%s_H_', dir_name, file_name)
+    local guard = string.format(
+      '#ifndef %s\n#define %s\n\n#endif  // %s',
+      guard_format,
+      guard_format,
+      guard_format
+    )
+
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(guard, '\n'))
+  end
+end
+
+vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
+  pattern = { '*.cpp', '*.h', '*.hpp' },
+  callback = function()
+    vim.bo.commentstring = '// %s'
+    vim.keymap.set(
+      'n',
+      '<F1>',
+      ':ClangdSwitchSourceHeader<cr>',
+      { desc = 'ClangdSwitchSourceHeader' }
+    )
+  end,
+})
+
+vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
+  pattern = { '*.h', '*.hpp' },
+  callback = function()
+    add_include_guard()
   end,
 })
 
