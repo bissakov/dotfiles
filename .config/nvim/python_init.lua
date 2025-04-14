@@ -731,41 +731,6 @@ require('lazy').setup({
   },
 
   {
-    'johmsalas/text-case.nvim',
-    dependencies = { 'nvim-telescope/telescope.nvim' },
-    ft = { 'c', 'cpp' },
-    opts = {
-      default_keymappings_enabled = false,
-      enabled_methods = {
-        'to_upper_case',
-        'to_lower_case',
-        'to_snake_case',
-      },
-    },
-    config = function()
-      local textcase = require 'textcase'
-      textcase.setup {}
-      require('telescope').load_extension 'textcase'
-
-      vim.keymap.set('n', '<F9>', function()
-        textcase.current_word 'to_snake_case'
-      end)
-
-      vim.keymap.set('n', '<S-F9>', function()
-        textcase.lsp_rename 'to_snake_case'
-      end)
-    end,
-    keys = {},
-    cmd = {
-      'Subs',
-      'TextCaseOpenTelescope',
-      'TextCaseOpenTelescopeQuickChange',
-      'TextCaseOpenTelescopeLSPChange',
-      'TextCaseStartReplacingCommand',
-    },
-  },
-
-  {
     'saghen/blink.cmp',
     event = 'VimEnter',
     version = '1.*',
