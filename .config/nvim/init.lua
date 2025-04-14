@@ -864,7 +864,7 @@ require('lazy').setup({
     opts = {
       keymap = { preset = 'default' },
       appearance = {
-        nerd_font_variant = 'mono',
+        nerd_font_variant = vim.g.have_nerd_font and 'mono' or 'normal',
       },
       signature = { enabled = true },
       completion = {
@@ -919,6 +919,8 @@ require('lazy').setup({
         'cpp',
         'cmake',
         'diff',
+        'gitattributes',
+        'gitignore',
         'go',
         'html',
         'json',
@@ -926,9 +928,11 @@ require('lazy').setup({
         'luadoc',
         'markdown',
         'markdown_inline',
-        'query',
         'python',
         'query',
+        'requirements',
+        'sql',
+        'tmux',
         'vim',
         'vimdoc',
         'yaml',

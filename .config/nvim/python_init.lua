@@ -1,6 +1,8 @@
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+vim.g.have_nerd_font = false
+
 vim.opt.number = true
 vim.opt.mouse = 'a'
 vim.opt.showmode = true
@@ -78,6 +80,47 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+local function add_include_guard()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+  if #lines == 1 and lines[1] == '' then
+    local file_path = vim.fn.expand '%:p'
+    local file_name = vim.fn.expand('%:t:r'):upper()
+    local dir_name = vim.fn.fnamemodify(file_path, ':h:t'):upper()
+
+    local guard_format = string.format('%s_%s_H_', dir_name, file_name)
+    local guard = string.format(
+      '#ifndef %s\n#define %s\n\n#endif  // %s',
+      guard_format,
+      guard_format,
+      guard_format
+    )
+
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(guard, '\n'))
+  end
+end
+
+vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
+  pattern = { '*.cpp', '*.h', '*.hpp' },
+  callback = function()
+    vim.bo.commentstring = '// %s'
+    vim.keymap.set(
+      'n',
+      '<F1>',
+      ':ClangdSwitchSourceHeader<cr>',
+      { desc = 'ClangdSwitchSourceHeader' }
+    )
+  end,
+})
+
+vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
+  pattern = { '*.h', '*.hpp' },
+  callback = function()
+    add_include_guard()
+  end,
+})
+
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = 'https://github.com/folke/lazy.nvim.git'
@@ -132,8 +175,8 @@ require('lazy').setup({
     opts = {
       delay = 0,
       icons = {
-        mappings = false,
-        keys = {
+        mappings = vim.g.have_nerd_font,
+        keys = vim.g.have_nerd_font and {} or {
           Up = '<Up> ',
           Down = '<Down> ',
           Left = '<Left> ',
@@ -190,7 +233,7 @@ require('lazy').setup({
         end,
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
-      { 'nvim-tree/nvim-web-devicons', enabled = false },
+      { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
     },
     config = function()
       require('telescope').setup {
@@ -419,7 +462,14 @@ require('lazy').setup({
         severity_sort = true,
         float = { border = 'rounded', source = 'if_many' },
         underline = { severity = vim.diagnostic.severity.ERROR },
-        signs = {},
+        signs = vim.g.have_nerd_font and {
+          text = {
+            [vim.diagnostic.severity.ERROR] = '󰅚 ',
+            [vim.diagnostic.severity.WARN] = '󰀪 ',
+            [vim.diagnostic.severity.INFO] = '󰋽 ',
+            [vim.diagnostic.severity.HINT] = '󰌶 ',
+          },
+        } or {},
         virtual_text = {
           source = 'if_many',
           spacing = 2,
@@ -681,6 +731,41 @@ require('lazy').setup({
   },
 
   {
+    'johmsalas/text-case.nvim',
+    dependencies = { 'nvim-telescope/telescope.nvim' },
+    ft = { 'c', 'cpp' },
+    opts = {
+      default_keymappings_enabled = false,
+      enabled_methods = {
+        'to_upper_case',
+        'to_lower_case',
+        'to_snake_case',
+      },
+    },
+    config = function()
+      local textcase = require 'textcase'
+      textcase.setup {}
+      require('telescope').load_extension 'textcase'
+
+      vim.keymap.set('n', '<F9>', function()
+        textcase.current_word 'to_snake_case'
+      end)
+
+      vim.keymap.set('n', '<S-F9>', function()
+        textcase.lsp_rename 'to_snake_case'
+      end)
+    end,
+    keys = {},
+    cmd = {
+      'Subs',
+      'TextCaseOpenTelescope',
+      'TextCaseOpenTelescopeQuickChange',
+      'TextCaseOpenTelescopeLSPChange',
+      'TextCaseStartReplacingCommand',
+    },
+  },
+
+  {
     'saghen/blink.cmp',
     event = 'VimEnter',
     version = '1.*',
@@ -692,7 +777,7 @@ require('lazy').setup({
     opts = {
       keymap = { preset = 'default' },
       appearance = {
-        nerd_font_variant = 'normal',
+        nerd_font_variant = vim.g.have_nerd_font and 'mono' or 'normal',
       },
       signature = { enabled = true },
       completion = {
@@ -729,7 +814,7 @@ require('lazy').setup({
       require('mini.ai').setup { n_lines = 500 }
       require('mini.surround').setup()
       local statusline = require 'mini.statusline'
-      statusline.setup { use_icons = false }
+      statusline.setup { use_icons = vim.g.have_nerd_font }
       ---@diagnostic disable-next-line: duplicate-set-field
       statusline.section_location = function()
         return '%2l:%-2v'
@@ -743,22 +828,18 @@ require('lazy').setup({
     opts = {
       ensure_installed = {
         'bash',
-        'c',
-        'cpp',
-        'cmake',
         'diff',
-        'go',
+        'gitattributes',
+        'gitignore',
         'html',
         'json',
         'lua',
-        'luadoc',
         'markdown',
         'markdown_inline',
-        'query',
         'python',
-        'query',
-        'vim',
-        'vimdoc',
+        'requirements',
+        'sql',
+        'tmux',
         'yaml',
       },
       auto_install = true,
@@ -958,13 +1039,21 @@ require('lazy').setup({
 
       vim.api.nvim_set_hl(0, 'DapBreak', { fg = '#e51400' })
       vim.api.nvim_set_hl(0, 'DapStop', { fg = '#ffcc00' })
-      local breakpoint_icons = {
-        Breakpoint = '●',
-        BreakpointCondition = '⊜',
-        BreakpointRejected = '⊘',
-        LogPoint = '◆',
-        Stopped = '⭔',
-      }
+      local breakpoint_icons = vim.g.have_nerd_font
+          and {
+            Breakpoint = '',
+            BreakpointCondition = '',
+            BreakpointRejected = '',
+            LogPoint = '',
+            Stopped = '',
+          }
+        or {
+          Breakpoint = '●',
+          BreakpointCondition = '⊜',
+          BreakpointRejected = '⊘',
+          LogPoint = '◆',
+          Stopped = '⭔',
+        }
       for type, icon in pairs(breakpoint_icons) do
         local tp = 'Dap' .. type
         local hl = (type == 'Stopped') and 'DapStop' or 'DapBreak'
@@ -988,7 +1077,7 @@ require('lazy').setup({
   },
 }, {
   ui = {
-    icons = {
+    icons = vim.g.have_nerd_font and {} or {
       cmd = '⌘',
       config = '🛠',
       event = '📅',
