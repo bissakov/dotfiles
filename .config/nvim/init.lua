@@ -53,12 +53,7 @@ vim.keymap.set('n', '<C-a>', 'ggVG', { desc = 'Select all [A]' })
 vim.keymap.set({ 'i', 'n', 'v' }, '<F1>', function() end, { desc = 'Disable documentation' })
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
-vim.keymap.set(
-  'n',
-  '<leader>q',
-  vim.diagnostic.setloclist,
-  { desc = 'Open diagnostic [Q]uickfix list' }
-)
+vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
@@ -80,44 +75,48 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
-local function add_include_guard()
-  local bufnr = vim.api.nvim_get_current_buf()
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-
-  if #lines == 1 and lines[1] == '' then
-    local file_path = vim.fn.expand '%:p'
-    local file_name = vim.fn.expand('%:t:r'):upper()
-    local dir_name = vim.fn.fnamemodify(file_path, ':h:t'):upper()
-
-    local guard_format = string.format('%s_%s_H_', dir_name, file_name)
-    local guard = string.format(
-      '#ifndef %s\n#define %s\n\n#endif  // %s',
-      guard_format,
-      guard_format,
-      guard_format
-    )
-
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(guard, '\n'))
-  end
-end
-
 vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
   pattern = { '*.cpp', '*.h', '*.hpp' },
   callback = function()
     vim.bo.commentstring = '// %s'
-    vim.keymap.set(
-      'n',
-      '<F1>',
-      ':ClangdSwitchSourceHeader<cr>',
-      { desc = 'ClangdSwitchSourceHeader' }
-    )
+    vim.keymap.set('n', '<F1>', ':ClangdSwitchSourceHeader<cr>', { desc = 'ClangdSwitchSourceHeader' })
   end,
 })
 
 vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
   pattern = { '*.h', '*.hpp' },
   callback = function()
-    add_include_guard()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+    if #lines == 1 and lines[1] == '' then
+      local file_path = vim.fn.expand '%:p'
+      local file_name = vim.fn.expand('%:t:r'):upper()
+      local dir_name = vim.fn.fnamemodify(file_path, ':h:t'):upper()
+
+      local guard_format = string.format('%s_%s_H_', dir_name, file_name)
+      local guard = string.format('#ifndef %s\n#define %s\n\n#endif  // %s', guard_format, guard_format, guard_format)
+
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(guard, '\n'))
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
+  pattern = { 'main.py' },
+  callback = function()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+    if #lines == 1 and lines[1] == '' then
+      vim.api.nvim_buf_set_lines(
+        bufnr,
+        0,
+        -1,
+        false,
+        vim.split('def main() -> None:\n    pass\n\n\nif __name__ == "__main__":\n    main()', '\n')
+      )
+    end
   end,
 })
 
@@ -135,7 +134,9 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
   if vim.v.shell_error ~= 0 then
     error('Error cloning lazy.nvim:\n' .. out)
   end
-end ---@diagnostic disable-next-line: undefined-field
+end
+
+---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup({
@@ -209,11 +210,11 @@ require('lazy').setup({
       },
 
       spec = {
-        { '<leader>c', group = '[C]ode', mode = { 'n', 'x' } },
-        { '<leader>d', group = '[D]ocument' },
-        { '<leader>r', group = '[R]ename' },
+        -- { '<leader>c', group = '[C]ode', mode = { 'n', 'x' } },
+        -- { '<leader>d', group = '[D]ocument' },
+        -- { '<leader>r', group = '[R]ename' },
         { '<leader>s', group = '[S]earch' },
-        { '<leader>w', group = '[W]orkspace' },
+        -- { '<leader>w', group = '[W]orkspace' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
       },
@@ -291,38 +292,13 @@ require('lazy').setup({
         ':lua require"telescope.builtin".find_files({ hidden = true })<CR>',
         { desc = '[S]earch [F]iles' }
       )
-      vim.keymap.set(
-        'n',
-        '<leader>ss',
-        builtin.builtin,
-        { desc = '[S]earch [S]elect Telescope' }
-      )
-      vim.keymap.set(
-        'n',
-        '<leader>sw',
-        builtin.grep_string,
-        { desc = '[S]earch current [W]ord' }
-      )
+      vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
+      vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
-      vim.keymap.set(
-        'n',
-        '<leader>sd',
-        builtin.diagnostics,
-        { desc = '[S]earch [D]iagnostics' }
-      )
+      vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-      vim.keymap.set(
-        'n',
-        '<leader>s.',
-        builtin.oldfiles,
-        { desc = '[S]earch Recent Files ("." for repeat)' }
-      )
-      vim.keymap.set(
-        'n',
-        '<leader><leader>',
-        builtin.buffers,
-        { desc = '[ ] Find existing buffers' }
-      )
+      vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
+      vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
       vim.keymap.set('n', '<leader>/', function()
         builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
@@ -371,32 +347,15 @@ require('lazy').setup({
             vim.keymap.set(mode, keys, func, { buffer = event.buf, desc = 'LSP: ' .. desc })
           end
 
-          map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
-          map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
-          map(
-            'gI',
-            require('telescope.builtin').lsp_implementations,
-            '[G]oto [I]mplementation'
-          )
-          map(
-            '<leader>D',
-            require('telescope.builtin').lsp_type_definitions,
-            'Type [D]efinition'
-          )
-          map(
-            '<leader>ds',
-            require('telescope.builtin').lsp_document_symbols,
-            '[D]ocument [S]ymbols'
-          )
-          map(
-            '<leader>ws',
-            require('telescope.builtin').lsp_dynamic_workspace_symbols,
-            '[W]orkspace [S]ymbols'
-          )
-          map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
-          map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction', { 'n', 'x' })
-
-          map('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
+          map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+          map('gra', vim.lsp.buf.code_action, '[G]oto Code [A]ction', { 'n', 'x' })
+          map('grr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+          map('gri', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
+          map('grd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+          map('grD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
+          map('gO', require('telescope.builtin').lsp_document_symbols, 'Open Document Symbols')
+          map('gW', require('telescope.builtin').lsp_dynamic_workspace_symbols, 'Open Workspace Symbols')
+          map('grt', require('telescope.builtin').lsp_type_definitions, '[G]oto [T]ype Definition')
 
           local function client_supports_method(client, method, bufnr)
             if vim.fn.has 'nvim-0.11' == 1 then
@@ -409,14 +368,9 @@ require('lazy').setup({
           local client = vim.lsp.get_client_by_id(event.data.client_id)
           if
             client
-            and client_supports_method(
-              client,
-              vim.lsp.protocol.Methods.textDocument_documentHighlight,
-              event.buf
-            )
+            and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf)
           then
-            local highlight_augroup =
-              vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
+            local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
               buffer = event.buf,
               group = highlight_augroup,
@@ -441,18 +395,9 @@ require('lazy').setup({
             })
           end
 
-          if
-            client
-            and client_supports_method(
-              client,
-              vim.lsp.protocol.Methods.textDocument_inlayHint,
-              event.buf
-            )
-          then
+          if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf) then
             map('<leader>th', function()
-              vim.lsp.inlay_hint.enable(
-                not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }
-              )
+              vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
             end, '[T]oggle Inlay [H]ints')
           end
         end,
@@ -554,8 +499,7 @@ require('lazy').setup({
         handlers = {
           function(server_name)
             local server = servers[server_name] or {}
-            server.capabilities =
-              vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
 
             if server_name == 'ruff' then
               server.capabilities.hoverProvider = false
@@ -643,7 +587,7 @@ require('lazy').setup({
       conform.formatters.stylua = {
         prepend_args = {
           '--column-width',
-          '95',
+          '120',
           '--line-endings',
           'Unix',
           '--indent-type',
@@ -705,8 +649,7 @@ require('lazy').setup({
         'djlint',
       }
 
-      g.ale_cpp_clangtidy_extra_options =
-        '-std=c++17 -W4 -Wunused-variable -I. -Isrc -Iinclude'
+      g.ale_cpp_clangtidy_extra_options = '-std=c++17 -W4 -Wunused-variable -I. -Isrc -Iinclude'
     end,
   },
 
@@ -1007,18 +950,8 @@ require('lazy').setup({
         map('n', '<leader>hD', function()
           gitsigns.diffthis '@'
         end, { desc = 'git [D]iff against last commit' })
-        map(
-          'n',
-          '<leader>tb',
-          gitsigns.toggle_current_line_blame,
-          { desc = '[T]oggle git show [b]lame line' }
-        )
-        map(
-          'n',
-          '<leader>tD',
-          gitsigns.preview_hunk_inline,
-          { desc = '[T]oggle git show [D]eleted' }
-        )
+        map('n', '<leader>tb', gitsigns.toggle_current_line_blame, { desc = '[T]oggle git show [b]lame line' })
+        map('n', '<leader>tD', gitsigns.preview_hunk_inline, { desc = '[T]oggle git show [D]eleted' })
       end,
     },
   },
@@ -1160,8 +1093,7 @@ require('lazy').setup({
       dap.listeners.before.event_exited['dapui_config'] = dapui.close
 
       local debugpy_path = require('mason-registry').get_package('debugpy'):get_install_path()
-      local python_path = vim.fn.has 'win32' == 1
-          and debugpy_path .. '/venv/Scripts/python.exe'
+      local python_path = vim.fn.has 'win32' == 1 and debugpy_path .. '/venv/Scripts/python.exe'
         or debugpy_path .. '/venv/bin/python'
       require('dap-python').setup(python_path, { include_configs = false })
 
